@@ -1,6 +1,6 @@
 # AI Course Homework — Part 2: Progressive Prompt Engineering
 
-All models were tested at **medium effort** so that the comparison focused on prompt quality rather than reasoning-effort settings.
+Each model was tested at low, medium, and high effort. The same effort level was used across models within each run so that prompt quality and effort could be compared separately.
 
 Models tested:
 
@@ -11,7 +11,7 @@ Models tested:
 - GPT-5.4
 - GPT-5.4 Mini
 
-The generated functions were executed locally against the required URLs.
+The generated functions were executed locally against the required URLs. When a response contained multiple code blocks, the final code block defining the requested function was tested.
 
 ## Exercise 1: Zero-Shot Code Generation
 
@@ -21,8 +21,6 @@ The generated functions were executed locally against the required URLs.
 
 ### Test expectations
 
-For this exercise, the five supplied URLs were treated as follows:
-
 | URL | Expected result |
 |---|---|
 | `https://example.com` | Valid |
@@ -31,31 +29,29 @@ For this exercise, the five supplied URLs were treated as follows:
 | `not-a-url` | Invalid |
 | `https://example.com:8080/path?query=value` | Valid |
 
-### Results
+### Medium-effort results
 
 | Model | Function name | Correct cases | Main observation |
 |---|---|---:|---|
-| Terra | `is_valid_url` | 4/5 | Rejected `localhost` because it required a dot in the hostname. Also did not validate port values. |
-| Luna | `is_valid_url` | 5/5 | Correct test results, but did not validate domain labels or port values. |
-| Sol | `is_valid_url` | 5/5 | Strongest zero-shot validator; checked schemes, hostname, ports, and IDN encoding. |
-| GPT-5.5 | `is_valid_url` | 5/5 | Simple and readable, but only checked scheme and non-empty network location. |
+| Terra | `is_valid_url` | 4/5 | Rejected `localhost` because it required a dot in the hostname. |
+| Luna | `is_valid_url` | 5/5 | Correct supplied cases, but did not validate domain labels or port values. |
+| Sol | `is_valid_url` | 5/5 | Strong zero-shot validator; checked schemes, hostname, ports, and IDN encoding. |
+| GPT-5.5 | `is_valid_url` | 5/5 | Simple and readable, but only checked scheme and network location. |
 | GPT-5.4 | `is_valid_url` | 5/5 | Correct supplied cases, but used broad `except Exception` and weak validation. |
-| GPT-5.4 Mini | `is_valid_url` | 5/5 | Correct supplied cases, with similarly minimal validation and extra follow-up text. |
+| GPT-5.4 Mini | `is_valid_url` | 5/5 | Correct supplied cases, with minimal validation and extra follow-up text. |
 
-### Code quality and missing edge cases
+### Low/medium/high comparison
 
-The zero-shot prompt left important decisions unspecified: accepted protocols, function name, return type, error behavior, domain rules, port validation, and handling of `None` or empty strings.
+| Model | Low | Medium | High |
+|---|---:|---:|---:|
+| Terra | 5/5 | 4/5 | 4/5 |
+| Luna | 5/5 | 5/5 | 4/5 |
+| Sol | 5/5 | 5/5 | 5/5 |
+| GPT-5.5 | 4/5 | 5/5 | 5/5 |
+| GPT-5.4 | 5/5 | 5/5 | 5/5 |
+| GPT-5.4 Mini | 5/5 | 5/5 | 4/5 |
 
-Most models used `urllib.parse`, which is a good starting point but does not by itself validate a URL. The simpler implementations generally did not check:
-
-- Invalid or out-of-range ports
-- Domain labels, hyphens, underscores, or consecutive dots
-- Whitespace inside URLs
-- IP addresses and IPv6 syntax
-- `localhost` policy
-- Descriptive failure reasons
-
-Sol produced the strongest zero-shot implementation. Terra was more restrictive than the test expectation because it required a dotted hostname.
+The zero-shot prompt left important decisions unspecified: accepted protocols, function name, return type, error behavior, domain rules, port validation, and handling of `None` or empty strings. Higher effort did not consistently improve the result. Some high-effort answers became more restrictive and rejected `localhost`.
 
 ## Exercise 2: Improved with Specifications
 
@@ -79,7 +75,7 @@ Sol produced the strongest zero-shot implementation. Terra was more restrictive 
 > - Docstring with examples
 > - Handle edge cases (empty string, None, malformed URLs)
 
-### Results on the required URLs
+### Medium-effort results
 
 | Model | Correct cases | Main observation |
 |---|---:|---|
@@ -87,14 +83,25 @@ Sol produced the strongest zero-shot implementation. Terra was more restrictive 
 | Luna | 4/5 | Correct except it rejected `localhost` because it required at least one dot. |
 | Sol | 5/5 | Correctly handled all supplied URLs, including `localhost`, port, path, and query. |
 | GPT-5.5 | 4/5 | Correct except it rejected `localhost` as lacking a top-level domain. |
-| GPT-5.4 | 4/5 | Correct except it rejected `localhost`; it also stripped and accepted leading whitespace. |
-| GPT-5.4 Mini | 4/5 | Correct except it rejected `localhost`; it also stripped and accepted leading whitespace. |
+| GPT-5.4 | 4/5 | Correct except it rejected `localhost`. |
+| GPT-5.4 Mini | 4/5 | Correct except it rejected `localhost`. |
+
+### Low/medium/high comparison
+
+| Model | Low | Medium | High |
+|---|---:|---:|---:|
+| Terra | 4/5 | 2/5 | 5/5 |
+| Luna | 4/5 | 4/5 | 5/5 |
+| Sol | 5/5 | 5/5 | 5/5 |
+| GPT-5.5 | 5/5 | 4/5 | 4/5 |
+| GPT-5.4 | 5/5 | 4/5 | 4/5 |
+| GPT-5.4 Mini | 5/5 | 4/5 | 5/5 |
 
 ### Additional edge cases
 
-The improved functions were also tested with empty strings, `None`, `https://`, an invalid port, an invalid domain, and leading whitespace.
+The low- and high-effort implementations were also tested with empty strings, `None`, `https://`, an invalid port, and an invalid domain. Every new low/high configuration returned an appropriate invalid result and descriptive error for all five additional cases.
 
-Most models returned descriptive errors for these cases. Sol handled the broadest set of cases, including `localhost`, IP addresses, IPv6, ports, credentials, whitespace, and internationalized domains. Terra's missing import was the most serious implementation defect. GPT-5.4 and GPT-5.4 Mini silently accepted a leading-space URL because they called `.strip()` before validation.
+The medium-effort outputs also demonstrated the same kinds of edge-case handling, although Terra's missing import caused failures for valid-domain inputs.
 
 ### Improvement from specifications
 
@@ -106,7 +113,7 @@ The enhanced prompt substantially improved the output structure:
 - Error messages became descriptive instead of returning only `True` or `False`.
 - Port parsing and domain validation appeared in every implementation.
 
-The specifications improved clarity most noticeably for GPT-5.4 and GPT-5.4 Mini, which produced much more complete validators than in the zero-shot exercise. Sol benefited most in practical correctness because it supported `localhost` and several address formats. Terra produced a detailed design but failed at runtime due to the missing import.
+Sol was the most consistent model: it passed 5/5 at every effort level. Terra improved from 2/5 at medium to 5/5 at high after including the missing import. GPT-5.5 and GPT-5.4 were strong at low effort but became more restrictive at higher effort by rejecting `localhost`. GPT-5.4 Mini also passed 5/5 at low and high effort.
 
 ### Remaining missing features
 
@@ -119,8 +126,8 @@ Even the improved prompt does not fully define several policies:
 - Whether fragments and percent-encoded values require validation
 - Whether validation means syntax only or also checking network reachability
 
-## Conclusion
+## Overall conclusion
 
-Progressive prompt engineering clearly improved the consistency and usefulness of the generated code. The zero-shot prompt produced several minimal validators with different implicit assumptions. The specification-rich prompt produced structured return values, descriptive errors, documentation, and broader edge-case handling.
+Progressive prompt engineering clearly improved the consistency and usefulness of the generated code. The zero-shot prompt produced minimal validators with different implicit assumptions. The specification-rich prompt produced structured return values, descriptive errors, documentation, and broader edge-case handling.
 
-The best overall result was Sol's improved implementation because it passed all five required URL tests and handled additional host and port cases. The main lesson is that detailed requirements improve output quality, but generated code must still be executed and reviewed: Terra's enhanced answer looked thorough but contained a missing import that caused runtime failures.
+The best overall result was Sol's improved implementation because it passed all five required URL tests at low, medium, and high effort. The main lesson is that detailed requirements improve output quality, but generated code must still be executed and reviewed: Terra's medium-effort answer looked thorough but contained a missing import that caused runtime failures. Higher effort alone did not guarantee better results.
